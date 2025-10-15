@@ -34,67 +34,94 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
   <script>
-    // === Створення сцени ===
+    // === Сцена ===
     const scene = new THREE.Scene();
 
     // === Камера ===
     const camera = new THREE.PerspectiveCamera(
-      75, window.innerWidth / window.innerHeight, 0.1, 1000
+      60, window.innerWidth / window.innerHeight, 0.1, 1000
     );
-    camera.position.set(2, 2, 3);
+    camera.position.set(3, 3, 3);
 
     // === Рендерер ===
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // === Контроль обертання (мишею) ===
+    // === Контролери миші ===
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
     // === Освітлення ===
-    const light = new THREE.PointLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 1);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
 
     // === Вершини тетраедра ===
     const vertices = [
-      new THREE.Vector3(1, 1, 1),   // вершина A
-      new THREE.Vector3(-1, -1, 1), // вершина B
-      new THREE.Vector3(-1, 1, -1), // вершина C
-      new THREE.Vector3(1, -1, -1)  // вершина D
+      new THREE.Vector3(1, 1, 1),    // IQ
+      new THREE.Vector3(-1, -1, 1),  // EQ
+      new THREE.Vector3(-1, 1, -1),  // Viglyad
+      new THREE.Vector3(1, -1, -1)   // Uspishnist
     ];
 
-    // === Створення граней ===
-    const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
+    // === Грані тетраедра ===
+    const geometry = new THREE.BufferGeometry();
+    geometry.setFromPoints(vertices);
     geometry.setIndex([
       0, 1, 2,
       0, 1, 3,
       0, 2, 3,
       1, 2, 3
     ]);
-
     geometry.computeVertexNormals();
 
-    // === Матеріал тетраедра ===
+    // === Матеріал ===
     const material = new THREE.MeshPhongMaterial({
       color: 0x00aaff,
       wireframe: true,
-      transparent: true,
-      opacity: 0.8
+      opacity: 0.9,
+      transparent: true
     });
 
+    // === Меш (об’єкт) ===
     const tetrahedron = new THREE.Mesh(geometry, material);
     scene.add(tetrahedron);
 
-    // === Пляма (точка) ===
+    // === Підписи вершин ===
+    const labels = [
+      { text: "IQ", position: vertices[0] },
+      { text: "EQ", position: vertices[1] },
+      { text: "Viglyad", position: vertices[2] },
+      { text: "Uspishnist", position: vertices[3] }
+    ];
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.font = '20px Arial';
+    ctx.fillStyle = 'white';
+
+    labels.forEach(label => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillText(label.text, 10, 20);
+      const texture = new THREE.CanvasTexture(ctx.canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.position.copy(label.position.clone().multiplyScalar(1.2));
+      sprite.scale.set(0.5, 0.25, 1);
+      scene.add(sprite);
+    });
+
+    // === Червона точка ===
     const dotGeometry = new THREE.SphereGeometry(0.05, 16, 16);
     const dotMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const dot = new THREE.Mesh(dotGeometry, dotMaterial);
     scene.add(dot);
     dot.visible = false;
 
-    // === Відслідковування кліку ===
+    // === Обробка кліку ===
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -103,14 +130,13 @@
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
-
       const intersects = raycaster.intersectObject(tetrahedron);
 
       if (intersects.length > 0) {
         const point = intersects[0].point;
         dot.position.copy(point);
         dot.visible = true;
-        console.log("Координати вибраної точки:", point);
+        console.log("📍 Координати вибраної точки:", point);
       }
     }
 
@@ -125,7 +151,7 @@
 
     animate();
 
-    // === Масштабування при зміні розміру вікна ===
+    // === Масштабування при зміні розміру ===
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
